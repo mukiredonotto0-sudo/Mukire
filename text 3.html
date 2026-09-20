@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PutBridge - Gestion Hospitalière</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+:root{--bg:#17191f;--panel:#20232b;--panel2:#292d36;--border:#383d48;--text:#eef1f5;--muted:#9da5b2;--accent:#7c5cff;--accent2:#9a83ff;--danger:#e35d6a;--ok:#38c98a}
+body{background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{position:fixed;width:240px;height:100vh;background:#121419;border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column}
+.logo{font-size:25px;font-weight:bold;text-align:center;margin-bottom:30px;color:#fff}
+.logo span{color:var(--accent2)}
+.nav button{display:block;width:100%;padding:13px 14px;margin:5px 0;border:0;border-radius:9px;background:transparent;color:#cdd2dc;text-align:left}
+.nav button:hover,.nav button.active{background:var(--accent);color:white}
+.user{margin-top:auto;border-top:1px solid var(--border);padding-top:15px;color:var(--muted)}
+.main{margin-left:240px;width:calc(100% - 240px);padding:25px;max-width:1600px}
+.top{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:25px}
+h1{font-size:28px}.subtitle{color:var(--muted);margin-top:6px}
+.search{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:9px;width:260px}
+.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card h3{color:var(--muted);font-size:14px}.number{font-size:30px;font-weight:bold;margin-top:8px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+.panel h2{font-size:19px;margin-bottom:15px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px 9px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--muted);font-size:13px}
+.btn{background:var(--accent);border:0;color:#fff;padding:10px 15px;border-radius:8px}
+.btn.secondary{background:var(--panel2)}
+.btn.danger{background:var(--danger)}
+.toolbar{display:flex;justify-content:space-between;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+.field input,.field select{width:100%;background:#15171c;border:1px solid var(--border);color:var(--text);padding:11px;border-radius:8px}
+.hidden{display:none!important}
+.status{padding:5px 8px;border-radius:20px;font-size:12px;background:#173e30;color:#61e0a8}
+.alert{padding:12px;border-radius:8px;background:#392b17;color:#f4c66b;margin-bottom:12px}
+.toast{position:fixed;right:20px;bottom:20px;background:#303540;color:white;padding:13px 17px;border-radius:9px;display:none;z-index:10}
+@media(max-width:950px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+@media(max-width:650px){.sidebar{width:70px;padding:15px 8px}.logo{font-size:0}.logo:after{content:"P";font-size:25px}.nav button{font-size:0;text-align:center}.nav button:first-letter{font-size:18px}.user{font-size:0}.main{margin-left:70px;width:calc(100% - 70px);padding:15px}.top{align-items:stretch;flex-direction:column}.search{width:100%}.cards{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}table{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="logo">Put<span>Bridge</span></div>
+<nav class="nav">
+<button class="active" onclick="showPage('dashboard',this)">Tableau de bord</button>
+<button onclick="showPage('patients',this)">Patients</button>
+<button onclick="showPage('medecins',this)">Médecins</button>
+<button onclick="showPage('rendezvous',this)">Rendez-vous</button>
+<button onclick="showPage('medicaments',this)">Médicaments</button>
+<button onclick="showPage('services',this)">Services</button>
+<button onclick="showPage('parametres',this)">Paramètres</button>
+</nav>
+<div class="user">Administrateur<br><small>PutBridge</small></div>
+</aside>
+
+<main class="main">
+<section id="dashboard" class="page active">
+<div class="top"><div><h1>Tableau de bord</h1><p class="subtitle">Gestion générale de l'hôpital</p></div><input id="globalSearch" class="search" placeholder="Rechercher..."></div>
+<div class="cards">
+<div class="card"><h3>Patients</h3><div id="statPatients" class="number">0</div></div>
+<div class="card"><h3>Médecins</h3><div id="statMedecins" class="number">0</div></div>
+<div class="card"><h3>Rendez-vous</h3><div id="statRdv" class="number">0</div></div>
+<div class="card"><h3>Médicaments</h3><div id="statMeds" class="number">0</div></div>
+</div>
+<div class="grid">
+<div class="panel"><h2>Derniers patients</h2><table><thead><tr><th>Nom</th><th>Âge</th><th>Sexe</th></tr></thead><tbody id="recentPatients"></tbody></table></div>
+<div class="panel"><h2>État du système</h2><p class="status">Stockage local actif</p><p style="color:var(--muted);margin-top:12px">Les données sont conservées dans ce navigateur.</p></div>
+</div>
+</section>
+
+<section id="patients" class="page">
+<div class="top"><div><h1>Patients</h1><p class="subtitle">Enregistrement et suivi des patients</p></div><button class="btn" onclick="toggleForm('patientForm')">Ajouter</button></div>
+<div id="patientForm" class="panel hidden" style="margin-bottom:18px">
+<div class="form-grid">
+<div class="field"><label>Nom complet</label><input id="pNom"></div>
+<div class="field"><label>Âge</label><input id="pAge" type="number"></div>
+<div class="field"><label>Sexe</label><select id="pSexe"><option>Homme</option><option>Femme</option></select></div>
+<div class="field"><label>Téléphone</label><input id="pTel"></div>
+</div><br><button class="btn" onclick="addPatient()">Enregistrer</button>
+</div>
+<div class="panel"><table><thead><tr><th>Nom</th><th>Âge</th><th>Sexe</th><th>Téléphone</th><th>Action</th></tr></thead><tbody id="patientsTable"></tbody></table></div>
+</section>
+
+<section id="medecins" class="page">
+<div class="top"><div><h1>Médecins</h1><p class="subtitle">Personnel médical</p></div><button class="btn" onclick="toggleForm('doctorForm')">Ajouter</button></div>
+<div id="doctorForm" class="panel hidden" style="margin-bottom:18px"><div class="form-grid"><div class="field"><label>Nom</label><input id="dNom"></div><div class="field"><label>Spécialité</label><input id="dSpec"></div></div><br><button class="btn" onclick="addDoctor()">Enregistrer</button></div>
+<div class="panel"><table><thead><tr><th>Nom</th><th>Spécialité</th><th>Action</th></tr></thead><tbody id="doctorsTable"></tbody></table></div>
+</section>
+
+<section id="rendezvous" class="page">
+<div class="top"><div><h1>Rendez-vous</h1><p class="subtitle">Planning médical</p></div><button class="btn" onclick="toggleForm('rdvForm')">Nouveau</button></div>
+<div id="rdvForm" class="panel hidden" style="margin-bottom:18px"><div class="form-grid"><div class="field"><label>Patient</label><input id="rPatient"></div><div class="field"><label>Médecin</label><input id="rDoctor"></div><div class="field"><label>Date</label><input id="rDate" type="date"></div><div class="field"><label>Heure</label><input id="rTime" type="time"></div></div><br><button class="btn" onclick="addRdv()">Enregistrer</button></div>
+<div class="panel"><table><thead><tr><th>Patient</th><th>Médecin</th><th>Date</th><th>Heure</th><th>Action</th></tr></thead><tbody id="rdvTable"></tbody></table></div>
+</section>
+
+<section id="medicaments" class="page">
+<div class="top"><div><h1>Médicaments</h1><p class="subtitle">Gestion du stock</p></div><button class="btn" onclick="toggleForm('medForm')">Ajouter</button></div>
+<div id="medForm" class="panel hidden" style="margin-bottom:18px"><div class="form-grid"><div class="field"><label>Médicament</label><input id="mNom"></div><div class="field"><label>Quantité</label><input id="mQty" type="number"></div><div class="field"><label>Prix (BIF)</label><input id="mPrix" type="number"></div></div><br><button class="btn" onclick="addMed()">Enregistrer</button></div>
+<div class="panel"><table><thead><tr><th>Médicament</th><th>Quantité</th><th>Prix</th><th>État</th><th>Action</th></tr></thead><tbody id="medsTable"></tbody></table></div>
+</section>
+
+<section id="services" class="page">
+<div class="top"><div><h1>Services</h1><p class="subtitle">Départements de l'hôpital</p></div></div>
+<div class="cards">
+<div class="card"><h3>Cardiologie</h3><div class="number">01</div></div>
+<div class="card"><h3>Pédiatrie</h3><div class="number">02</div></div>
+<div class="card"><h3>Urgences</h3><div class="number">03</div></div>
+<div class="card"><h3>Laboratoire</h3><div class="number">04</div></div>
+</div>
+</section>
+
+<section id="parametres" class="page">
+<div class="top"><div><h1>Paramètres</h1><p class="subtitle">Gestion des données de PutBridge</p></div></div>
+<div class="panel"><h2>Sauvegarde</h2><p style="color:var(--muted);margin-bottom:15px">Exporter vos données pour les conserver ou les transférer.</p><button class="btn" onclick="exportData()">Exporter la sauvegarde</button> <button class="btn secondary" onclick="importData()">Importer</button><input id="fileInput" type="file" accept=".json" class="hidden"><hr style="border:0;border-top:1px solid var(--border);margin:20px 0"><h2>Zone dangereuse</h2><button class="btn danger" onclick="clearData()">Supprimer toutes les données</button></div>
+</section>
+</main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const KEY="putbridge_hopital_v1";
+let data=JSON.parse(localStorage.getItem(KEY)||'{"patients":[],"medecins":[],"rdv":[],"medicaments":[]}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render();toast("Données sauvegardées");}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",1800)}
+function showPage(id,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));btn.classList.add("active")}
+function toggleForm(id){document.getElementById(id).classList.toggle("hidden")}
+function addPatient(){let nom=pNom.value.trim();if(!nom)return alert("Entrez le nom du patient.");data.patients.push({id:Date.now(),nom,age:pAge.value,sexe:pSexe.value,tel:pTel.value});save();toggleForm("patientForm");["pNom","pAge","pTel"].forEach(id=>document.getElementById(id).value="")}
+function addDoctor(){let nom=dNom.value.trim();if(!nom)return alert("Entrez le nom du médecin.");data.medecins.push({id:Date.now(),nom,spec:dSpec.value});save();toggleForm("doctorForm");dNom.value="";dSpec.value=""}
+function addRdv(){if(!rPatient.value.trim())return alert("Entrez le patient.");data.rdv.push({id:Date.now(),patient:rPatient.value,doctor:rDoctor.value,date:rDate.value,time:rTime.value});save();toggleForm("rdvForm")}
+function addMed(){let nom=mNom.value.trim();if(!nom)return alert("Entrez le médicament.");data.medicaments.push({id:Date.now(),nom,qty:Number(mQty.value)||0,prix:Number(mPrix.value)||0});save();toggleForm("medForm")}
+function remove(type,id){data[type]=data[type].filter(x=>x.id!==id);save()}
+function render(){
+statPatients.textContent=data.patients.length;statMedecins.textContent=data.medecins.length;statRdv.textContent=data.rdv.length;statMeds.textContent=data.medicaments.length;
+patientsTable.innerHTML=data.patients.map(x=>`<tr><td>${safe(x.nom)}</td><td>${safe(x.age)}</td><td>${safe(x.sexe)}</td><td>${safe(x.tel)}</td><td><button class="btn danger" onclick="remove('patients',${x.id})">Supprimer</button></td></tr>`).join("")||empty("Aucun patient");
+doctorsTable.innerHTML=data.medecins.map(x=>`<tr><td>${safe(x.nom)}</td><td>${safe(x.spec)}</td><td><button class="btn danger" onclick="remove('medecins',${x.id})">Supprimer</button></td></tr>`).join("")||empty("Aucun médecin");
+rdvTable.innerHTML=data.rdv.map(x=>`<tr><td>${safe(x.patient)}</td><td>${safe(x.doctor)}</td><td>${safe(x.date)}</td><td>${safe(x.time)}</td><td><button class="btn danger" onclick="remove('rdv',${x.id})">Supprimer</button></td></tr>`).join("")||empty("Aucun rendez-vous");
+medsTable.innerHTML=data.medicaments.map(x=>`<tr><td>${safe(x.nom)}</td><td>${x.qty}</td><td>${x.prix} BIF</td><td>${x.qty<=10?'<span style="color:#f4c66b">Stock faible</span>':'<span class="status">Disponible</span>'}</td><td><button class="btn danger" onclick="remove('medicaments',${x.id})">Supprimer</button></td></tr>`).join("")||empty("Aucun médicament");
+recentPatients.innerHTML=data.patients.slice(-5).reverse().map(x=>`<tr><td>${safe(x.nom)}</td><td>${safe(x.age)}</td><td>${safe(x.sexe)}</td></tr>`).join("")||"<tr><td colspan='3'>Aucune donnée</td></tr>";
+}
+function empty(t){return `<tr><td colspan="6" style="color:var(--muted)">${t}</td></tr>`}
+function safe(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="putbridge-sauvegarde.json";a.click();URL.revokeObjectURL(a.href)}
+function importData(){fileInput.click()}
+fileInput.addEventListener("change",e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();toast("Sauvegarde importée")}catch{alert("Fichier invalide.")}};r.readAsText(f)})
+function clearData(){if(confirm("Supprimer toutes les données de PutBridge ?")){data={patients:[],medecins:[],rdv:[],medicaments:[]};save()}}
+render();
+</script>
+</body>
+</html>
